@@ -1,136 +1,138 @@
+// 🔥 FIREBASE IMPORTS
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+// 🔥 CONFIG (तुम्हारा same)
 const firebaseConfig = {
   apiKey: "AIzaSyD_Ga-Mi9EPdi9gtJWkXA7fgqea1P4OE54",
   authDomain: "dbsolutions-career.firebaseapp.com",
   projectId: "dbsolutions-career",
+  storageBucket: "dbsolutions-career.appspot.com",
+  messagingSenderId: "672960239523",
   appId: "1:672960239523:web:d883210f329cf552e5ec16"
 };
 
+// INIT
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// LOGIN
-window.googleLogin = async function(){
-  try{
+// DOM
+const chat = document.getElementById("chat");
+const input = document.getElementById("messageInput");
+const profileSection = document.getElementById("profileSection");
+
+// 🔥 CHECK LOGIN ON LOAD
+window.onload = () => {
+  const name = localStorage.getItem("username");
+  const email = localStorage.getItem("email");
+  const photo = localStorage.getItem("photo");
+
+  if (name && email) {
+    showProfile(name, email, photo);
+  }
+};
+
+// 🔥 GOOGLE LOGIN
+window.googleLogin = async function () {
+  try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
 
-    const data = {
-      name: user.displayName,
-      email: user.email,
-      photo: user.photoURL
-    };
+    const name = user.displayName;
+    const email = user.email;
+    const photo = user.photoURL;
 
-    localStorage.setItem("user", JSON.stringify(data));
+    // SAVE
+    localStorage.setItem("username", name);
+    localStorage.setItem("email", email);
+    localStorage.setItem("photo", photo);
 
-    showProfile(data);
-    enableChat();
+    showProfile(name, email, photo);
 
-    document.getElementById("chat").innerHTML = "";
-    addMsg("✅ Welcome " + data.name);
-
-    document.getElementById("logoutBtn").style.display = "block";
-
-  }catch(err){
+    addBotMessage(`✅ Welcome ${name}`);
+  } catch (err) {
+    console.error(err);
     alert("Login failed ❌");
   }
 };
 
-// ENABLE CHAT
-function enableChat(){
-  document.getElementById("chat").classList.remove("disabled");
+// 🔥 SHOW PROFILE
+function showProfile(name, email, photo) {
+  profileSection.innerHTML = `
+    <img src="${photo}" />
+    <h3>${name}</h3>
+    <div class="badge">✔ Verified • 🤖 AI Active</div>
+    <div class="badge">${email}</div>
+  `;
 
-  const input = document.getElementById("messageInput");
+  // UI CONTROL
+  document.querySelector(".google").style.display = "none";
+  document.querySelector(".logout").style.display = "block";
+
   input.disabled = false;
   input.placeholder = "Ask anything...";
 }
 
-// PROFILE
-function showProfile(user){
-  document.getElementById("profileSection").innerHTML = `
-    <div class="profile glass">
-      <img src="${user.photo}">
-      <div class="profile-name">${user.name}</div>
-      <div class="badge">✔ Verified • 🤖 AI Active</div>
-      <div class="badge">${user.email}</div>
-    </div>
-  `;
-}
+// 🔥 LOGOUT
+window.logout = async function () {
+  await signOut(auth);
 
-// MESSAGE
-function addMsg(text,type="ai"){
-  const chat = document.getElementById("chat");
-  chat.innerHTML += `<div class="msg ${type}">${text}</div>`;
-  chat.scrollTop = chat.scrollHeight;
-}
-
-// SEND MESSAGE
-window.sendMessage = function(){
-  if(!localStorage.getItem("user")) return;
-
-  const input = document.getElementById("messageInput");
-
-  if(!input.value.trim()) return;
-
-  addMsg(input.value,"user");
-  input.value = "";
-
-  setTimeout(()=>{
-    addMsg("🤖 AI is analyzing your request...");
-  },800);
-};
-
-// ENTER KEY FIX
-document.addEventListener("DOMContentLoaded", ()=>{
-  const input = document.getElementById("messageInput");
-
-  input.addEventListener("keypress", function(e){
-    if(e.key === "Enter"){
-      sendMessage();
-    }
-  });
-});
-
-// UPLOAD
-window.uploadResume = function(){
-
-  if(!localStorage.getItem("user")){
-    alert("Login first");
-    return;
-  }
-
-  const file = document.getElementById("fileInput").files[0];
-  if(!file) return alert("Select file");
-
-  addMsg("📄 Resume received");
-
-  setTimeout(()=>{
-    addMsg("📊 ATS Score: 82%");
-    addMsg("🎯 Top Roles: Customer Support, Sales Executive");
-    addMsg("💼 Matching jobs found");
-  },1000);
-};
-
-// LOGOUT
-document.getElementById("logoutBtn").onclick = function(){
-  localStorage.removeItem("user");
+  localStorage.clear();
   location.reload();
 };
 
-// AUTO LOAD
-window.onload = function(){
-  const user = JSON.parse(localStorage.getItem("user"));
+// 🔥 CHAT SEND
+window.sendMessage = function () {
+  const msg = input.value.trim();
+  if (!msg) return;
 
-  if(user){
-    showProfile(user);
-    enableChat();
+  addUserMessage(msg);
+  input.value = "";
 
-    document.getElementById("logoutBtn").style.display = "block";
+  // FAKE AI RESPONSE (placeholder)
+  setTimeout(() => {
+    addBotMessage("🤖 AI is analyzing your request...");
+  }, 500);
+};
 
-    document.getElementById("chat").innerHTML = "";
-    addMsg("👋 Welcome back " + user.name);
+// 🔥 MESSAGE UI
+function addUserMessage(text) {
+  chat.innerHTML += `<div class="msg user">${text}</div>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addBotMessage(text) {
+  chat.innerHTML += `<div class="msg">${text}</div>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// 🔥 RESUME UPLOAD
+window.uploadResume = async function () {
+  const file = document.getElementById("fileInput").files[0];
+
+  if (!file) {
+    alert("Select file first");
+    return;
+  }
+
+  addBotMessage("📄 Uploading resume...");
+
+  try {
+    const formData = new FormData();
+    formData.append("resume", file);
+
+    const res = await fetch("/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    addBotMessage(`✅ Resume uploaded`);
+    addBotMessage(`📊 ATS Score: ${data.score || 80}%`);
+    addBotMessage(`💼 Matching jobs found`);
+  } catch (err) {
+    addBotMessage("❌ Upload failed (backend needed)");
   }
 };
